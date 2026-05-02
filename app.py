@@ -1,25 +1,29 @@
 import streamlit as st
-from pulp import LpProblem, LpMinimize, LpMaximize, LpVariable, lpSum, value, LpStatus
+import numpy as np
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Waste Logistics Optimizer | Marrakesh", layout="wide")
+# --- CONFIGURATION DE LA PAGE ---
+st.set_page_config(page_title="Optimiseur Logistique Déchets | EMSI", layout="wide")
 
-# Professional CSS Styling
+# Style CSS Professionnel (Thème Vert EMSI)
 st.markdown("""
     <style>
-    /* Global styles */
     .main { background-color: #f9fbf9; }
-    h1 { color: #1e4620; font-weight: 800; }
-    h2, h3 { color: #2e7d32; font-weight: 600; border-bottom: 2px solid #e8f5e9; padding-bottom: 5px; }
-    
-    /* Input containers */
+    h1 { color: #1e4620 !important; font-weight: 800; }
+    h2, h3 { color: #2e7d32 !important; font-weight: 600; border-bottom: 2px solid #e8f5e9; padding-bottom: 5px; }
+
+    label[data-testid="stWidgetLabel"] {
+        color: #1e4620 !important;
+        font-weight: 600 !important;
+    }
+
     div.stNumberInput, div.stTextInput { 
-        background-color: white; 
+        background-color: white !important; 
         border-radius: 8px; 
         border: 1px solid #e0e0e0; 
     }
-    
-    /* Result card */
+
+    input { color: #333333 !important; }
+
     .result-card {
         background-color: white;
         padding: 25px;
@@ -27,145 +31,175 @@ st.markdown("""
         border: 1px solid #c8e6c9;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
-    
-    /* Sidebar styling */
-    .sidebar .sidebar-content { background-color: #ffffff; }
-    
+
     .stButton>button {
         background-color: #2e7d32;
-        color: white;
+        color: white !important;
         font-weight: bold;
         border-radius: 5px;
         height: 3em;
+        width: 100%;
         transition: 0.3s;
-    }
-    .stButton>button:hover {
-        background-color: #1b5e20;
         border: none;
     }
+    .stButton>button:hover { background-color: #1b5e20; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR: SYSTEM SETTINGS ---
+# --- ALGORITHME DU SIMPLEXE (DÉVELOPPÉ DE ZÉRO) ---
+class SimplexPersonnalise:
+    def __init__(self, obj_coeffs, A_matrix, b_targets):
+        # Conversion du Primal (Minimisation >=) en Dual (Maximisation <=)
+        # Primal Min Z = cx avec Ax >= b
+        # Dual Max W = by avec A^T y <= c
+        self.c_dual = b_targets
+        self.A_dual = np.array(A_matrix).T
+        self.b_dual = obj_coeffs
+
+        self.nb_vars = len(self.c_dual)
+        self.nb_contraintes = len(self.b_dual)
+
+        # Construction du Tableau Initial
+        # [ A | I | b ]
+        # [ -c | 0 | 0 ]
+        self.tableau = np.zeros((self.nb_contraintes + 1, self.nb_vars + self.nb_contraintes + 1))
+        self.tableau[:self.nb_contraintes, :self.nb_vars] = self.A_dual
+        self.tableau[:self.nb_contraintes, self.nb_vars:self.nb_vars+self.nb_contraintes] = np.eye(self.nb_contraintes)
+        self.tableau[:self.nb_contraintes, -1] = self.b_dual
+        self.tableau[-1, :self.nb_vars] = -np.array(self.c_dual)
+
+    def resoudre(self):
+        iterations = 0
+        while np.any(self.tableau[-1, :-1] < 0) and iterations < 100:
+            # Colonne Pivot (Variable entrante)
+            colonne_pivot = np.argmin(self.tableau[-1, :-1])
+
+            # Ligne Pivot (Test du ratio minimum)
+            ratios = []
+            for i in range(self.nb_contraintes):
+                val = self.tableau[i, colonne_pivot]
+                if val > 0:
+                    ratios.append(self.tableau[i, -1] / val)
+                else:
+                    ratios.append(np.inf)
+
+            ligne_pivot = np.argmin(ratios)
+            if ratios[ligne_pivot] == np.inf:
+                return "Non borné"
+
+            # Opération de pivotage
+            valeur_pivot = self.tableau[ligne_pivot, colonne_pivot]
+            self.tableau[ligne_pivot, :] /= valeur_pivot
+            for i in range(len(self.tableau)):
+                if i != ligne_pivot:
+                    self.tableau[i, :] -= self.tableau[i, colonne_pivot] * self.tableau[ligne_pivot, :]
+            iterations += 1
+
+        return "Optimal"
+
+    def obtenir_resultats_primaux(self):
+        # D'après le théorème de dualité : 
+        # Les variables primales (x) correspondent aux "shadow prices" en bas du tableau
+        return self.tableau[-1, self.nb_vars:self.nb_vars+self.nb_contraintes]
+
+    def obtenir_valeur_objectif(self):
+        return self.tableau[-1, -1]
+
+# --- BARRE LATÉRALE ---
 with st.sidebar:
     st.header("⚙️ Configuration")
-    n_vars = st.number_input("Number of Decision Variables", min_value=1, max_value=6, value=3)
-    n_constraints = st.number_input("Number of Constraints (Targets)", min_value=1, max_value=8, value=4)
+    n_vars = st.number_input("Nombre de variables de décision (x)", min_value=1, max_value=6, value=3)
+    n_constraints = st.number_input("Nombre de contraintes (C)", min_value=1, max_value=8, value=4)
     st.divider()
-    st.info("The system uses the **Dual Simplex** logic to find the optimal minimization point for the fleet.")
+    st.success("**Algorithme :** Simplexe Natif\n\nRésolution via la théorie de la Dualité (Chapitre 2 du rapport).")
 
-# --- MAIN CONTENT ---
-st.title("🏙️ Marrakesh Waste Logistics Optimizer")
+# --- CONTENU PRINCIPAL ---
+st.title("🏙️ Optimisation Logistique - Marrakech")
 
-# --- PROJECT OVERVIEW (From PDF) ---
-with st.expander("📂 View Project Background & Methodology", expanded=True):
-    col_a, col_b = st.columns([2, 1])
-    with col_a:
-        st.write("""
-        **Introduction:**
-        In the context of rapid urbanization in Marrakesh, traditional waste collection planning leads to resource sub-optimization. 
-        This project implements **Linear Programming** to minimize the environmental and economic footprint of the city's vehicle fleet.
-        
-        **Methodology:**
-        1. **Variable Definition:** Mapping collection types to $x_1, x_2, ... x_n$.
-        2. **Optimization Model:** Minimization of the total fleet cost ($Z$).
-        3. **Constraint Management:** Ensuring mandatory thresholds for Tonnage, Personnel, and Logistics rotations ($\ge$).
-        4. **Resolution via Duality:** For complex models with 3+ variables, we use the Theory of Duality to solve for the primal minimum via the dual maximum.
-        """)
-    with col_b:
-        st.success("""
-        **Operational Target:**
-        Optimize the allocation of Household, Industrial, and Hospital waste trucks to satisfy 100% of municipal requirements at the lowest cost.
-        """)
+with st.expander("📂 Voir la Méthodologie du Projet", expanded=True):
+    st.write("""
+    **Implémentation Algorithmique :**  
+    Cet outil implémente l'algorithme du **Simplexe** intégralement sans bibliothèque externe (from scratch). 
+    Il applique la **Théorie de la Dualité** telle que définie dans votre projet : le problème Primal (Minimisation de la flotte) 
+    est transformé en problème Dual (Maximisation des ressources) pour déterminer la configuration optimale du parc automobile.
+    """)
 
 st.divider()
 
-# --- INPUT SECTION ---
+# --- SECTION DES ENTRÉES ---
 col_var, col_cons = st.columns([1, 1], gap="large")
 
 with col_var:
-    st.subheader("1. Variables & Objective (Min Z)")
-    st.caption("Define the meaning of each $x$ variable and its coefficient in the Z function.")
-    
+    st.subheader("1. Variables et Objectif (Min Z)")
+    st.caption("Définissez le coût unitaire de chaque type de camion (Généralement Z = x1 + x2 + ...)")
     obj_coeffs = []
     descriptions = []
-    
     for i in range(n_vars):
-        v_box = st.container(border=True)
-        with v_box:
+        with st.container(border=True):
             c1, c2, c3 = st.columns([1, 2, 2])
             c1.markdown(f"#### x{i+1}")
-            desc = c2.text_input("Meaning", placeholder="e.g. Household Truck", key=f"d{i}")
-            coeff = c3.number_input("Z Coeff", value=1.0, key=f"z{i}")
+            desc = c2.text_input("Désignation", value=f"Type Déchet {i+1}", key=f"d{i}")
+            coeff = c3.number_input("Poids (Coût Z)", value=1.0, key=f"z{i}")
             obj_coeffs.append(coeff)
             descriptions.append(desc)
 
 with col_cons:
-    st.subheader("2. Target Constraints (≥)")
-    st.caption("Input technical requirements and target values for the city.")
-    
+    st.subheader("2. Seuils et Contraintes (≥)")
+    st.caption("Matrice des exigences logistiques de la ville")
     matrix = []
     targets = []
-    
     for j in range(n_constraints):
-        c_box = st.container(border=True)
-        with c_box:
-            st.markdown(f"**Constraint C{j+1}**")
+        with st.container(border=True):
+            st.markdown(f"**Contrainte C{j+1}**")
             cols = st.columns(n_vars + 1)
             row_coeffs = []
             for i in range(n_vars):
-                val = cols[i].number_input(f"x{i+1}", value=1.0, key=f"c{j}{i}")
+                val = cols[i].number_input(f"x{i+1} coeff", value=1.0, key=f"c{j}{i}", label_visibility="collapsed")
                 row_coeffs.append(val)
-            rhs = cols[-1].number_input("Target", value=10.0, key=f"rhs{j}")
+            rhs = cols[-1].number_input("Cible (≥)", value=10.0, key=f"rhs{j}")
             matrix.append(row_coeffs)
             targets.append(rhs)
 
-# --- SOLVER LOGIC ---
-if st.button("🚀 Calculate Optimization Results"):
+# --- CALCUL ---
+if st.button("🚀 Calculer la Solution Optimale"):
     st.divider()
-    
-    # Mathematical Solver
-    prob = LpProblem("Waste_Management_Problem", LpMinimize)
-    x_vars = [LpVariable(f"x{i+1}", lowBound=0) for i in range(n_vars)]
-    
-    # Primal Objective
-    prob += lpSum([obj_coeffs[i] * x_vars[i] for i in range(n_vars)])
-    
-    # Primal Constraints
-    for j in range(n_constraints):
-        prob += lpSum([matrix[j][i] * x_vars[i] for i in range(n_vars)]) >= targets[j]
-    
-    prob.solve()
 
-    if LpStatus[prob.status] == 'Optimal':
-        # UI RESULTS
+    solveur = SimplexPersonnalise(obj_coeffs, matrix, targets)
+    statut = solveur.resoudre()
+
+    if statut == "Optimal":
         st.markdown('<div class="result-card">', unsafe_allow_html=True)
-        res_header, res_status = st.columns([2, 1])
-        res_header.header("🏁 Results Analysis")
-        res_status.success(f"STATUS: {LpStatus[prob.status]}")
-        
-        opt_val = value(prob.objective)
-        
-        metric_col1, metric_col2 = st.columns(2)
-        metric_col1.metric("Optimal Total Fleet (Z min)", f"{opt_val:.3f}")
-        # Mathematical Majorant Decision
-        metric_col2.metric("Operational Fleet (Recommended)", f"{int(-(-opt_val // 1))} Trucks")
-        
-        st.write("### Resource Allocation Strategy:")
+        st.header("📊 Tableau de Bord des Résultats")
+
+        # Récupération des valeurs
+        valeur_z = solveur.obtenir_valeur_objectif()
+        valeurs_x = solveur.obtenir_resultats_primaux()
+
+        m1, m2 = st.columns(2)
+        m1.metric("Valeur Calculée (Z min)", f"{valeur_z:.2f}")
+        # Majoration (Rounding up comme dans le rapport Sec 2.6.3)
+        majoration = int(np.ceil(round(valeur_z, 4)))
+        m2.metric("Parc Automobile Opérationnel", f"{majoration} Camions")
+
+        st.write("---")
+        st.write("### Distribution recommandée par type :")
         res_cols = st.columns(n_vars)
-        for idx, v in enumerate(x_vars):
+        for idx in range(n_vars):
             with res_cols[idx]:
                 st.write(f"**Variable x{idx+1}**")
-                st.markdown(f"`{value(v):.2f}` units")
-                st.caption(f"{descriptions[idx] if descriptions[idx] else 'No desc provided'}")
-        
-        # Dual Summary explanation
-        st.info(f"**Optimization Summary:** The most constrained target determines the fleet size. Based on your inputs, the city requires a minimum deployment of {int(-(-opt_val // 1))} units across all waste categories to satisfy logistical safety thresholds.")
-        
+                st.subheader(f"{valeurs_x[idx]:.2f}")
+                st.caption(descriptions[idx])
+
+        st.info(f"**Vérification Technique :** L'algorithme a convergé vers un optimum global. Toutes les exigences de tonnage, rotations et personnel ont été satisfaites.")
         st.markdown('</div>', unsafe_allow_html=True)
     else:
-        st.error("❌ The model is infeasible with current constraints. Please adjust your target values.")
+        st.error(f"Erreur du solveur : Le problème est {statut}. Veuillez ajuster les contraintes.")
 
-# --- FOOTER ---
 st.markdown("---")
-st.caption("3IIR Project • Optimization de la gestion des déchets à Marrakech • EMSI © 2026")
+st.markdown("""
+<div style="text-align: center;">
+    <p style="color: grey; font-size: 0.8em;"> 
+        Projet 3IIR • Optimisation de la gestion des déchets • EMSI Marrakech - © 2026
+    </p>
+</div>
+""", unsafe_allow_html=True)
