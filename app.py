@@ -4,45 +4,124 @@ import numpy as np
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="Optimiseur Logistique Déchets", layout="wide")
 
-# Style CSS Professionnel (Thème Vert EMSI)
+# Style CSS Premium (Thème Vert EMSI Optimisé)
 st.markdown("""
     <style>
-    .main { background-color: #f9fbf9; }
-    h1 { color: #1e4620 !important; font-weight: 800; }
-    h2, h3 { color: #2e7d32 !important; font-weight: 600; border-bottom: 2px solid #e8f5e9; padding-bottom: 5px; }
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
 
-    label[data-testid="stWidgetLabel"] {
-        color: #1e4620 !important;
+    /* Global Styles */
+    .main {
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    /* Palette de Couleurs & Variables */
+    :root {
+        --primary-green: #2e7d32;
+        --vibrant-green: #4caf50;
+        --soft-green: rgba(76, 175, 80, 0.1);
+        --glass-bg: rgba(255, 255, 255, 0.03);
+        --glass-border: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Typography Improvements */
+    h1 {
+        color: var(--vibrant-green) !important;
+        font-weight: 800 !important;
+        letter-spacing: -1.5px !important;
+        margin-bottom: 1.5rem !important;
+        text-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    h2, h3 {
+        color: var(--vibrant-green) !important;
+        font-weight: 600 !important;
+        border-bottom: 2px solid var(--soft-green) !important;
+        padding-bottom: 12px;
+        margin-top: 2rem !important;
+    }
+
+    /* Widget Labels & Captions */
+    label[data-testid="stWidgetLabel"] p {
+        color: inherit !important;
+        font-weight: 600 !important;
+        font-size: 1.05rem !important;
+        opacity: 0.9;
+    }
+
+    .stCaption {
+        font-size: 0.9rem !important;
+        opacity: 0.7;
+        font-style: italic;
+    }
+
+    /* Containers & Cards (Glassmorphism) */
+    div[data-testid="stVerticalBlock"] > div[style*="border: 1px solid"] {
+        background: var(--glass-bg) !important;
+        backdrop-filter: blur(12px) saturate(180%);
+        -webkit-backdrop-filter: blur(12px) saturate(180%);
+        border-radius: 20px !important;
+        border: 1px solid var(--glass-border) !important;
+        padding: 1.8rem !important;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+
+    div[data-testid="stVerticalBlock"] > div[style*="border: 1px solid"]:hover {
+        border-color: var(--vibrant-green) !important;
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+    }
+
+    /* Inputs Aesthetics */
+    .stNumberInput input, .stTextInput input {
+        border-radius: 12px !important;
+        border: 1px solid var(--glass-border) !important;
+        padding: 0.6rem !important;
+        transition: border-color 0.3s ease;
+    }
+    
+    .stNumberInput input:focus {
+        border-color: var(--vibrant-green) !important;
+    }
+
+    /* Premium Action Button */
+    .stButton>button {
+        background: linear-gradient(135deg, #1b5e20 0%, #4caf50 100%) !important;
+        color: white !important;
+        font-weight: 700 !important;
+        border-radius: 15px !important;
+        border: none !important;
+        height: 3.8rem !important;
+        width: 100%;
+        box-shadow: 0 6px 20px rgba(46, 125, 50, 0.3) !important;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        margin-top: 1rem;
+    }
+
+    .stButton>button:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 12px 30px rgba(46, 125, 50, 0.5) !important;
+    }
+
+    .stButton>button:active {
+        transform: translateY(0) scale(0.98);
+    }
+
+    /* Metrics Appearance */
+    [data-testid="stMetricValue"] {
+        color: var(--vibrant-green) !important;
+        font-weight: 800 !important;
+        font-family: 'Outfit', sans-serif !important;
+    }
+
+    /* Expander Styling */
+    .streamlit-expanderHeader {
+        background-color: var(--soft-green) !important;
+        border-radius: 12px !important;
         font-weight: 600 !important;
     }
-
-    div.stNumberInput, div.stTextInput { 
-        background-color: white !important; 
-        border-radius: 8px; 
-        border: 1px solid #e0e0e0; 
-    }
-
-    input { color: #333333 !important; }
-
-    .result-card {
-        background-color: white;
-        padding: 25px;
-        border-radius: 15px;
-        border: 1px solid #c8e6c9;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-
-    .stButton>button {
-        background-color: #2e7d32;
-        color: white !important;
-        font-weight: bold;
-        border-radius: 5px;
-        height: 3em;
-        width: 100%;
-        transition: 0.3s;
-        border: none;
-    }
-    .stButton>button:hover { background-color: #1b5e20; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -168,38 +247,37 @@ if st.button("🚀 Calculer la Solution Optimale"):
     statut = solveur.resoudre()
 
     if statut == "Optimal":
-        st.markdown('<div class="result-card">', unsafe_allow_html=True)
-        st.header("📊 Tableau de Bord des Résultats")
-
-        # Récupération des valeurs
-        valeur_z = solveur.obtenir_valeur_objectif()
-        valeurs_x = solveur.obtenir_resultats_primaux()
-
-        m1, m2 = st.columns(2)
-        m1.metric("Valeur Calculée (Z min)", f"{valeur_z:.2f}")
-        # Majoration (Rounding up comme dans le rapport Sec 2.6.3)
-        majoration = int(np.ceil(round(valeur_z, 4)))
-        m2.metric("Parc Automobile Opérationnel", f"{majoration} Camions")
-
-        st.write("---")
-        st.write("### Distribution recommandée par type:")
-        res_cols = st.columns(n_vars)
-        for idx in range(n_vars):
-            with res_cols[idx]:
-                st.write(f"**Variable x{idx+1}**")
-                st.subheader(f"{valeurs_x[idx]:.2f}")
-                st.caption(descriptions[idx])
-
-        st.info(f"**Vérification Technique:** L'algorithme a convergé vers un optimum global. Toutes les exigences de tonnage, rotations et personnel ont été satisfaites.")
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.header("📊 Tableau de Bord des Résultats")
+    
+            # Récupération des valeurs
+            valeur_z = solveur.obtenir_valeur_objectif()
+            valeurs_x = solveur.obtenir_resultats_primaux()
+    
+            m1, m2 = st.columns(2)
+            m1.metric("Valeur Calculée (Z min)", f"{valeur_z:.2f}")
+            # Majoration (Rounding up comme dans le rapport Sec 2.6.3)
+            majoration = int(np.ceil(round(valeur_z, 4)))
+            m2.metric("Parc Automobile Opérationnel", f"{majoration} Camions")
+    
+            st.write("---")
+            st.write("### Distribution recommandée par type:")
+            res_cols = st.columns(n_vars)
+            for idx in range(n_vars):
+                with res_cols[idx]:
+                    st.write(f"**Variable x{idx+1}**")
+                    st.subheader(f"{valeurs_x[idx]:.2f}")
+                    st.caption(descriptions[idx])
+    
+            st.info(f"**Vérification Technique:** L'algorithme a convergé vers un optimum global. Toutes les exigences de tonnage, rotations et personnel ont été satisfaites.")
     else:
         st.error(f"Erreur du solveur : Le problème est {statut}. Veuillez ajuster les contraintes.")
 
 st.markdown("---")
 st.markdown("""
-<div style="text-align: center;">
-    <p style="color: grey; font-size: 0.8em;"> 
-        Projet 3IIR • Optimisation de la gestion des déchets • EMSI Marrakech - © 2026
+<div style="text-align: center; margin-top: 5rem; padding: 2rem; border-top: 1px solid var(--glass-border);">
+    <p style="opacity: 0.6; font-size: 0.85em; font-weight: 300; letter-spacing: 0.5px;"> 
+        🏙️ Projet 3IIR • Optimisation de la gestion des déchets • EMSI Marrakech - © 2026
     </p>
 </div>
 """, unsafe_allow_html=True)
