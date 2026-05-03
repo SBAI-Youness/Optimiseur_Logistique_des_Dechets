@@ -49,8 +49,8 @@ Sur Windows:
 
 ### 3. Installation et Lancement
 ```bash
-# Installation des dépendances (Numpy et Streamlit)
-pip install streamlit numpy
+# Installation des dépendances via le fichier requirements.txt
+pip install -r requirements.txt
 
 # Lancement du tableau de bord
 streamlit run app.py
