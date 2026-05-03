@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 
 # --- CONFIGURATION DE LA PAGE ---
-st.set_page_config(page_title="Optimiseur Logistique Déchets | EMSI", layout="wide")
+st.set_page_config(page_title="Optimiseur Logistique Déchets", layout="wide")
 
 # Style CSS Professionnel (Thème Vert EMSI)
 st.markdown("""
@@ -47,7 +47,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- ALGORITHME DU SIMPLEXE (DÉVELOPPÉ DE ZÉRO) ---
-class SimplexPersonnalise:
+class Simplex:
     def __init__(self, obj_coeffs, A_matrix, b_targets):
         # Conversion du Primal (Minimisation >=) en Dual (Maximisation <=)
         # Primal Min Z = cx avec Ax >= b
@@ -111,14 +111,14 @@ with st.sidebar:
     n_vars = st.number_input("Nombre de variables de décision (x)", min_value=1, max_value=6, value=3)
     n_constraints = st.number_input("Nombre de contraintes (C)", min_value=1, max_value=8, value=4)
     st.divider()
-    st.success("**Algorithme :** Simplexe Natif\n\nRésolution via la théorie de la Dualité (Chapitre 2 du rapport).")
+    st.success("**Algorithme:** Simplexe Natif\n\nRésolution via la théorie de la Dualité.")
 
 # --- CONTENU PRINCIPAL ---
 st.title("🏙️ Optimisation Logistique - Marrakech")
 
 with st.expander("📂 Voir la Méthodologie du Projet", expanded=True):
     st.write("""
-    **Implémentation Algorithmique :**  
+    **Implémentation Algorithmique:**  
     Cet outil implémente l'algorithme du **Simplexe** intégralement sans bibliothèque externe (from scratch). 
     Il applique la **Théorie de la Dualité** telle que définie dans votre projet : le problème Primal (Minimisation de la flotte) 
     est transformé en problème Dual (Maximisation des ressources) pour déterminer la configuration optimale du parc automobile.
@@ -164,7 +164,7 @@ with col_cons:
 if st.button("🚀 Calculer la Solution Optimale"):
     st.divider()
 
-    solveur = SimplexPersonnalise(obj_coeffs, matrix, targets)
+    solveur = Simplex(obj_coeffs, matrix, targets)
     statut = solveur.resoudre()
 
     if statut == "Optimal":
@@ -182,7 +182,7 @@ if st.button("🚀 Calculer la Solution Optimale"):
         m2.metric("Parc Automobile Opérationnel", f"{majoration} Camions")
 
         st.write("---")
-        st.write("### Distribution recommandée par type :")
+        st.write("### Distribution recommandée par type:")
         res_cols = st.columns(n_vars)
         for idx in range(n_vars):
             with res_cols[idx]:
@@ -190,7 +190,7 @@ if st.button("🚀 Calculer la Solution Optimale"):
                 st.subheader(f"{valeurs_x[idx]:.2f}")
                 st.caption(descriptions[idx])
 
-        st.info(f"**Vérification Technique :** L'algorithme a convergé vers un optimum global. Toutes les exigences de tonnage, rotations et personnel ont été satisfaites.")
+        st.info(f"**Vérification Technique:** L'algorithme a convergé vers un optimum global. Toutes les exigences de tonnage, rotations et personnel ont été satisfaites.")
         st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.error(f"Erreur du solveur : Le problème est {statut}. Veuillez ajuster les contraintes.")
