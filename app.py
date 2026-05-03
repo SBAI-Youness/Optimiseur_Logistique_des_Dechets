@@ -193,15 +193,24 @@ with st.sidebar:
     st.success("**Algorithme:** Simplexe Natif\n\nRésolution via la théorie de la Dualité.")
 
 # --- CONTENU PRINCIPAL ---
-st.title("🏙️ Optimisation Logistique - Marrakech")
+st.title("Optimiseur Logistique des Déchets - Ville de Marrakech")
 
-with st.expander("📂 Voir la Méthodologie du Projet", expanded=True):
+with st.expander("📂 À propos du Projet", expanded=True):
     st.write("""
-    **Implémentation Algorithmique:**  
-    Cet outil implémente l'algorithme du **Simplexe** intégralement sans bibliothèque externe (from scratch). 
-    Il applique la **Théorie de la Dualité** telle que définie dans votre projet : le problème Primal (Minimisation de la flotte) 
-    est transformé en problème Dual (Maximisation des ressources) pour déterminer la configuration optimale du parc automobile.
+    **Description du Projet**  
+    Cette application est un outil d'aide à la décision conçu pour optimiser la collecte des déchets à Marrakech. 
+    Son objectif est de déterminer la configuration minimale de la flotte de camions nécessaire pour répondre aux besoins 
+    logistiques, humains et sanitaires de la ville.
+
+    **Fonctionnement Global**
+    1. **Saisie des Besoins :** L'utilisateur définit les types de déchets (ménagers, industriels, hospitaliers) et les objectifs de la municipalité.
+    2. **Calcul Optimisé :** Le système utilise un modèle mathématique de **Programmation Linéaire** pour identifier la solution la plus économique.
+    3. **Résolution :** Le moteur de calcul intègre un algorithme **Simplexe** personnalisé, basé sur la théorie de la dualité, pour garantir un résultat précis sans dépendre de bibliothèques externes.
+
+    **Solution Apportée :** Le projet permet d'assurer un service public de qualité (tonnage respecté, personnel mobilisé) tout en minimisant l'utilisation des ressources et le nombre de véhicules en circulation.
     """)
+
+st.divider()
 
 st.divider()
 
@@ -240,7 +249,7 @@ with col_cons:
             targets.append(rhs)
 
 # --- CALCUL ---
-if st.button("🚀 Calculer la Solution Optimale"):
+if st.button("Calculer la Solution Optimale"):
     st.divider()
 
     solveur = Simplex(obj_coeffs, matrix, targets)
@@ -267,9 +276,7 @@ if st.button("🚀 Calculer la Solution Optimale"):
                 with res_cols[idx]:
                     st.write(f"**Variable x{idx+1}**")
                     st.subheader(f"{valeurs_x[idx]:.2f}")
-                    st.caption(descriptions[idx])
-    
-            st.info(f"**Vérification Technique:** L'algorithme a convergé vers un optimum global. Toutes les exigences de tonnage, rotations et personnel ont été satisfaites.")
+                    st.caption(descriptions[idx])    
     else:
         st.error(f"Erreur du solveur : Le problème est {statut}. Veuillez ajuster les contraintes.")
 
@@ -277,7 +284,7 @@ st.markdown("---")
 st.markdown("""
 <div style="text-align: center; margin-top: 5rem; padding: 2rem; border-top: 1px solid var(--glass-border);">
     <p style="opacity: 0.6; font-size: 0.85em; font-weight: 300; letter-spacing: 0.5px;"> 
-        🏙️ Projet 3IIR • Optimisation de la gestion des déchets • EMSI Marrakech - © 2026
+        Optimiseur Logistique des Déchets • Ville de Marrakech - © 2026
     </p>
 </div>
 """, unsafe_allow_html=True)
