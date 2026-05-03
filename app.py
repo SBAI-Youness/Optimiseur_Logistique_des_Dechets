@@ -4,7 +4,7 @@ import numpy as np
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="Optimiseur Logistique Déchets", layout="wide")
 
-# Style CSS Premium (Thème Vert EMSI Optimisé)
+# Style CSS
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
@@ -125,7 +125,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- ALGORITHME DU SIMPLEXE (DÉVELOPPÉ DE ZÉRO) ---
+# --- ALGORITHME DU SIMPLEXE ---
 class Simplex:
     def __init__(self, obj_coeffs, A_matrix, b_targets):
         # Conversion du Primal (Minimisation >=) en Dual (Maximisation <=)
